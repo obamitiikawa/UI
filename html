@@ -1,0 +1,817 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>タスク管理アプリ</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Inter Font -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Font Awesome for icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <!-- Chart.js CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f3f4f6; /* Light gray background */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+        }
+        .app-container {
+            width: 100%;
+            max-width: 400px; /* Typical mobile width */
+            background-color: white;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            border-radius: 1rem; /* Rounded corners for the app container */
+            overflow: hidden; /* Hide overflow for rounded corners */
+            display: flex;
+            flex-direction: column;
+            min-height: 80vh; /* Make it tall like a phone screen */
+        }
+        .page {
+            display: none; /* Hidden by default */
+            flex-grow: 1; /* Allow pages to fill available space */
+            padding: 1rem;
+            overflow-y: auto; /* Enable scrolling for content */
+        }
+        .page.active {
+            display: flex; /* Display when active */
+            flex-direction: column;
+        }
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1rem;
+            border-bottom: 1px solid #e5e7eb;
+            background-color: #f9fafb;
+        }
+        .bottom-nav {
+            display: flex;
+            justify-content: space-around;
+            padding: 0.75rem 0;
+            border-top: 1px solid #e5e7eb;
+            background-color: #f9fafb;
+        }
+        .bottom-nav-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            color: #6b7280; /* Gray text */
+            font-size: 0.75rem;
+            cursor: pointer;
+            transition: color 0.2s;
+        }
+        .bottom-nav-item.active, .bottom-nav-item:hover {
+            color: #b91c1c; /* Red for active/hover */
+        }
+        .bottom-nav-item i {
+            font-size: 1.25rem;
+            margin-bottom: 0.25rem;
+        }
+        .calendar-grid {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr); /* 7 days a week */
+            gap: 0.5rem;
+            text-align: center;
+        }
+        .calendar-day {
+            padding: 0.5rem;
+            border-radius: 0.5rem;
+            background-color: #f3f4f6;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        .calendar-day.current-month {
+            background-color: #e5e7eb;
+        }
+        .calendar-day.has-event {
+            background-color: #fca5a5; /* Light red for days with events */
+            font-weight: bold;
+        }
+        .calendar-day.selected {
+            background-color: #b91c1c; /* Darker red for selected day */
+            color: white;
+        }
+        .event-badge {
+            display: inline-block;
+            padding: 0.2rem 0.4rem;
+            border-radius: 0.5rem;
+            font-size: 0.6rem;
+            margin-top: 0.2rem;
+            color: white;
+        }
+        .event-badge.assignment {
+            background-color: #b91c1c; /* Red */
+        }
+        .event-badge.part-time {
+            background-color: #92400e; /* Brown */
+        }
+        .notification-banner {
+            background-color: #fee2e2; /* Light red */
+            color: #b91c1c; /* Dark red text */
+            padding: 0.75rem;
+            border-radius: 0.75rem;
+            margin-bottom: 1rem;
+            font-size: 0.875rem;
+            line-height: 1.4;
+        }
+        .form-input {
+            width: 100%;
+            padding: 0.75rem;
+            border: 1px solid #d1d5db;
+            border-radius: 0.75rem;
+            margin-bottom: 1rem;
+            font-size: 1rem;
+            box-sizing: border-box; /* Include padding in width */
+        }
+        .btn-primary {
+            background-color: #92400e; /* Brown */
+            color: white;
+            padding: 0.75rem 1.5rem;
+            border-radius: 0.75rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background-color 0.2s;
+            width: 100%;
+            text-align: center;
+        }
+        .btn-primary:hover {
+            background-color: #7c2d12; /* Darker brown */
+        }
+        .btn-secondary {
+            background-color: #d1d5db; /* Light gray */
+            color: #374151; /* Dark gray text */
+            padding: 0.75rem 1.5rem;
+            border-radius: 0.75rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background-color 0.2s;
+            width: 100%;
+            text-align: center;
+        }
+        .btn-secondary:hover {
+            background-color: #9ca3af; /* Darker gray */
+        }
+        .toggle-switch {
+            position: relative;
+            display: inline-block;
+            width: 3rem; /* 48px */
+            height: 1.5rem; /* 24px */
+        }
+        .toggle-switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #ccc;
+            transition: .4s;
+            border-radius: 1.5rem; /* 24px */
+        }
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 1.125rem; /* 18px */
+            width: 1.125rem; /* 18px */
+            left: 0.1875rem; /* 3px */
+            bottom: 0.1875rem; /* 3px */
+            background-color: white;
+            transition: .4s;
+            border-radius: 50%;
+        }
+        input:checked + .slider {
+            background-color: #b91c1c; /* Red when checked */
+        }
+        input:focus + .slider {
+            box-shadow: 0 0 1px #b91c1c;
+        }
+        input:checked + .slider:before {
+            transform: translateX(1.5rem); /* 24px */
+        }
+        .chart-container {
+            width: 100%;
+            height: 250px; /* Fixed height for charts */
+            margin-top: 1rem;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 flex items-center justify-center min-h-screen">
+
+    <div class="app-container rounded-2xl">
+
+        <!-- ログイン画面 -->
+        <div id="login-page" class="page active justify-center items-center text-center p-8">
+            <h2 class="text-2xl font-bold mb-8 text-gray-800">ログイン</h2>
+            <input type="text" id="login-id" placeholder="ID" class="form-input mb-4 rounded-xl">
+            <input type="password" id="login-password" placeholder="パスワード" class="form-input mb-6 rounded-xl">
+            <a href="#" class="text-sm text-gray-600 hover:text-gray-800 mb-6 block">パスワードを忘れた</a>
+            <button id="login-btn" class="btn-primary mb-4 rounded-xl">ログイン</button>
+            <button id="register-link-btn" class="btn-secondary rounded-xl">新規会員登録</button>
+        </div>
+
+        <!-- 新規会員登録画面 -->
+        <div id="register-page" class="page justify-center items-center text-center p-8">
+            <h2 class="text-2xl font-bold mb-8 text-gray-800">新規会員登録</h2>
+            <input type="email" id="register-email" placeholder="ユーザーID(メールアドレス)" class="form-input mb-4 rounded-xl">
+            <input type="password" id="register-password" placeholder="パスワード" class="form-input mb-4 rounded-xl">
+            <input type="password" id="register-confirm-password" placeholder="パスワード (確認用)" class="form-input mb-6 rounded-xl">
+            <button id="register-btn" class="btn-primary rounded-xl">登録</button>
+        </div>
+
+        <!-- カレンダー画面 -->
+        <div id="calendar-page" class="page flex-col">
+            <div class="header">
+                <button id="prev-month" class="text-gray-600 hover:text-gray-800"><i class="fas fa-chevron-left"></i></button>
+                <span id="current-month-year" class="text-lg font-semibold text-gray-800"></span>
+                <button id="next-month" class="text-gray-600 hover:text-gray-800"><i class="fas fa-chevron-right"></i></button>
+                <div class="flex items-center space-x-4">
+                    <i class="fas fa-calendar-alt text-gray-600"></i>
+                    <i class="fas fa-search text-gray-600"></i>
+                    <i class="fas fa-bars text-gray-600"></i>
+                </div>
+            </div>
+
+            <div class="p-4">
+                <div class="notification-banner mb-4">
+                    <p>締め切りの近い課題が二件あります</p>
+                    <p>月 23:59 キャリアデザイン</p>
+                    <p>火 15:00 ソフトウェア実践論</p>
+                </div>
+
+                <div class="calendar-grid mb-4">
+                    <div class="font-semibold text-gray-500">SUN</div>
+                    <div class="font-semibold text-gray-500">MON</div>
+                    <div class="font-semibold text-gray-500">TUE</div>
+                    <div class="font-semibold text-gray-500">WED</div>
+                    <div class="font-semibold text-gray-500">THU</div>
+                    <div class="font-semibold text-gray-500">FRI</div>
+                    <div class="font-semibold text-gray-500">SAT</div>
+                    <!-- Calendar days will be generated here by JavaScript -->
+                </div>
+            </div>
+
+            <!-- Bottom Navigation -->
+            <div class="bottom-nav mt-auto">
+                <div class="bottom-nav-item active" onclick="showPage('calendar-page')">
+                    <i class="fas fa-calendar-alt"></i>
+                    <span>イベント</span>
+                </div>
+                <div class="bottom-nav-item" onclick="showPage('new-task-page')">
+                    <i class="fas fa-plus-circle text-2xl"></i>
+                    <span>タスク追加</span>
+                </div>
+                <div class="bottom-nav-item" onclick="showPage('analytics-menu-page')">
+                    <i class="fas fa-cog"></i>
+                    <span>Setting</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- 新規タスク画面 -->
+        <div id="new-task-page" class="page flex-col">
+            <div class="header">
+                <button id="close-new-task" class="text-gray-600 hover:text-gray-800"><i class="fas fa-times"></i></button>
+                <h2 class="text-lg font-semibold text-gray-800">新規タスク</h2>
+                <button id="save-task-btn" class="text-red-700 font-semibold">保存</button>
+            </div>
+
+            <div class="p-4 flex-grow">
+                <input type="text" id="new-task-name" placeholder="新規タスク名" class="form-input mb-6 rounded-xl text-xl font-semibold placeholder-gray-400">
+
+                <div class="flex items-center justify-between mb-4">
+                    <div class="flex items-center text-gray-700">
+                        <i class="far fa-clock mr-3 text-lg"></i>
+                        <span>終日</span>
+                    </div>
+                    <label class="toggle-switch">
+                        <input type="checkbox" id="all-day-toggle">
+                        <span class="slider"></span>
+                    </label>
+                </div>
+
+                <div class="mb-4 pl-8">
+                    <div class="flex items-center justify-between mb-3">
+                        <span class="text-gray-700">開始</span>
+                        <input type="date" id="start-date" class="border p-2 rounded-lg text-gray-700">
+                    </div>
+                    <div class="flex items-center justify-between">
+                        <span class="text-gray-700">終了</span>
+                        <input type="date" id="end-date" class="border p-2 rounded-lg text-gray-700">
+                    </div>
+                </div>
+
+                <div class="flex items-center mb-6 text-gray-700">
+                    <i class="fas fa-redo mr-3 text-lg"></i>
+                    <span>反復</span>
+                </div>
+
+                <div class="flex items-center justify-between mb-4">
+                    <div class="flex items-center text-gray-700">
+                        <i class="far fa-bell mr-3 text-lg"></i>
+                        <span>リマインド</span>
+                    </div>
+                    <label class="toggle-switch">
+                        <input type="checkbox" id="reminder-toggle">
+                        <span class="slider"></span>
+                    </label>
+                </div>
+
+                <div class="flex items-center justify-between mb-4 cursor-pointer">
+                    <div class="flex items-center text-gray-700">
+                        <i class="far fa-sticky-note mr-3 text-lg"></i>
+                        <span>メモ</span>
+                    </div>
+                    <i class="fas fa-chevron-right text-gray-500"></i>
+                </div>
+            </div>
+        </div>
+
+        <!-- 分析メニュー画面 -->
+        <div id="analytics-menu-page" class="page flex-col">
+            <div class="header">
+                <h2 class="text-lg font-semibold text-gray-800">分析</h2>
+            </div>
+            <div class="p-4 flex-grow">
+                <div class="mb-4 p-4 bg-gray-100 rounded-xl cursor-pointer hover:bg-gray-200" onclick="showAnalyticsDetail('total-users')">
+                    <h3 class="text-gray-700 font-semibold">総ユーザー数</h3>
+                </div>
+                <div class="mb-4 p-4 bg-gray-100 rounded-xl cursor-pointer hover:bg-gray-200" onclick="showAnalyticsDetail('new-tasks')">
+                    <h3 class="text-gray-700 font-semibold">今週の新規タスク数</h3>
+                </div>
+                <div class="mb-4 p-4 bg-gray-100 rounded-xl cursor-pointer hover:bg-gray-200" onclick="showAnalyticsDetail('task-analysis')">
+                    <h3 class="text-gray-700 font-semibold">タスク分析</h3>
+                </div>
+                <div class="mb-4 p-4 bg-gray-100 rounded-xl cursor-pointer hover:bg-gray-200" onclick="showAnalyticsDetail('app-launch')">
+                    <h3 class="text-gray-700 font-semibold">アプリ起動回数</h3>
+                </div>
+            </div>
+            <!-- Bottom Navigation -->
+            <div class="bottom-nav mt-auto">
+                <div class="bottom-nav-item" onclick="showPage('calendar-page')">
+                    <i class="fas fa-calendar-alt"></i>
+                    <span>イベント</span>
+                </div>
+                <div class="bottom-nav-item" onclick="showPage('new-task-page')">
+                    <i class="fas fa-plus-circle text-2xl"></i>
+                    <span>タスク追加</span>
+                </div>
+                <div class="bottom-nav-item active" onclick="showPage('analytics-menu-page')">
+                    <i class="fas fa-cog"></i>
+                    <span>Setting</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- 総ユーザー数詳細 -->
+        <div id="total-users-detail-page" class="page flex-col">
+            <div class="header">
+                <button onclick="showPage('analytics-menu-page')" class="text-gray-600 hover:text-gray-800"><i class="fas fa-chevron-left"></i></button>
+                <h2 class="text-lg font-semibold text-gray-800">総ユーザー数</h2>
+                <div></div> <!-- Placeholder for alignment -->
+            </div>
+            <div class="p-4 flex-grow text-center flex flex-col justify-center items-center">
+                <p class="text-5xl font-bold text-gray-800 mb-2">10,000人</p>
+                <p class="text-lg text-gray-600">先週より <span class="text-red-600 font-bold">500人↑</span></p>
+            </div>
+        </div>
+
+        <!-- 今週の新規タスク数詳細 -->
+        <div id="new-tasks-detail-page" class="page flex-col">
+            <div class="header">
+                <button onclick="showPage('analytics-menu-page')" class="text-gray-600 hover:text-gray-800"><i class="fas fa-chevron-left"></i></button>
+                <h2 class="text-lg font-semibold text-gray-800">今週の新規タスク数</h2>
+                <div></div>
+            </div>
+            <div class="p-4 flex-grow text-center flex flex-col justify-center items-center">
+                <p class="text-5xl font-bold text-gray-800">500</p>
+            </div>
+        </div>
+
+        <!-- タスク分析詳細 -->
+        <div id="task-analysis-detail-page" class="page flex-col">
+            <div class="header">
+                <button onclick="showPage('analytics-menu-page')" class="text-gray-600 hover:text-gray-800"><i class="fas fa-chevron-left"></i></button>
+                <h2 class="text-lg font-semibold text-gray-800">タスク分析</h2>
+                <div></div>
+            </div>
+            <div class="p-4 flex-grow flex flex-col justify-center items-center">
+                <div class="chart-container">
+                    <canvas id="taskAnalysisChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- アプリ起動回数詳細 -->
+        <div id="app-launch-detail-page" class="page flex-col">
+            <div class="header">
+                <button onclick="showPage('analytics-menu-page')" class="text-gray-600 hover:text-gray-800"><i class="fas fa-chevron-left"></i></button>
+                <h2 class="text-lg font-semibold text-gray-800">アプリ起動回数</h2>
+                <div></div>
+            </div>
+            <div class="p-4 flex-grow flex flex-col justify-center items-center">
+                <div class="chart-container">
+                    <canvas id="appLaunchChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        // 現在表示されているページを管理する変数
+        let currentPage = 'login-page';
+
+        // ページを表示/非表示にする関数
+        function showPage(pageId) {
+            // 現在のページを非アクティブにする
+            const currentActivePage = document.querySelector('.page.active');
+            if (currentActivePage) {
+                currentActivePage.classList.remove('active');
+            }
+
+            // 指定されたページをアクティブにする
+            const targetPage = document.getElementById(pageId);
+            if (targetPage) {
+                targetPage.classList.add('active');
+                currentPage = pageId;
+
+                // ページ固有の初期化処理
+                if (pageId === 'calendar-page') {
+                    renderCalendar(currentDate);
+                    updateBottomNav('calendar-page');
+                } else if (pageId === 'analytics-menu-page') {
+                    updateBottomNav('analytics-menu-page');
+                } else if (pageId === 'new-task-page') {
+                    updateBottomNav('new-task-page');
+                } else if (pageId === 'task-analysis-detail-page') {
+                    renderTaskAnalysisChart();
+                } else if (pageId === 'app-launch-detail-page') {
+                    renderAppLaunchChart();
+                }
+            }
+        }
+
+        // 下部ナビゲーションのアクティブ状態を更新する関数
+        function updateBottomNav(activePageId) {
+            document.querySelectorAll('.bottom-nav-item').forEach(item => {
+                item.classList.remove('active');
+            });
+            if (activePageId === 'calendar-page') {
+                document.querySelector('.bottom-nav-item:nth-child(1)').classList.add('active');
+            } else if (activePageId === 'new-task-page') {
+                document.querySelector('.bottom-nav-item:nth-child(2)').classList.add('active');
+            } else if (activePageId === 'analytics-menu-page') {
+                document.querySelector('.bottom-nav-item:nth-child(3)').classList.add('active');
+            }
+        }
+
+        // ログインボタンのイベントリスナー
+        document.getElementById('login-btn').addEventListener('click', () => {
+            const id = document.getElementById('login-id').value;
+            const password = document.getElementById('login-password').value;
+
+            // ここに実際のログインロジック（API呼び出しなど）を実装します
+            if (id === 'user' && password === 'password') {
+                alert('ログイン成功！'); // 実際にはカスタムモーダルを使用
+                showPage('calendar-page'); // 成功したらカレンダーページへ
+            } else {
+                alert('IDまたはパスワードが間違っています。'); // 実際にはカスタムモーダルを使用
+            }
+        });
+
+        // 新規会員登録リンクボタンのイベントリスナー
+        document.getElementById('register-link-btn').addEventListener('click', () => {
+            showPage('register-page');
+        });
+
+        // 登録ボタンのイベントリスナー
+        document.getElementById('register-btn').addEventListener('click', () => {
+            const email = document.getElementById('register-email').value;
+            const password = document.getElementById('register-password').value;
+            const confirmPassword = document.getElementById('register-confirm-password').value;
+
+            if (password !== confirmPassword) {
+                alert('パスワードが一致しません。'); // 実際にはカスタムモーダルを使用
+                return;
+            }
+            // ここに実際の登録ロジック（API呼び出しなど）を実装します
+            alert('登録成功！ログインしてください。'); // 実際にはカスタムモーダルを使用
+            showPage('login-page'); // 登録成功したらログインページへ
+        });
+
+        // 新規タスク画面の閉じるボタン
+        document.getElementById('close-new-task').addEventListener('click', () => {
+            showPage('calendar-page');
+        });
+
+        // 新規タスク画面の保存ボタン
+        document.getElementById('save-task-btn').addEventListener('click', () => {
+            const taskName = document.getElementById('new-task-name').value;
+            const allDay = document.getElementById('all-day-toggle').checked;
+            const startDate = document.getElementById('start-date').value;
+            const endDate = document.getElementById('end-date').value;
+            const reminder = document.getElementById('reminder-toggle').checked;
+
+            if (!taskName) {
+                alert('タスク名を入力してください。');
+                return;
+            }
+
+            // ここにタスク保存ロジックを実装します（例: ローカルストレージ、API）
+            console.log({ taskName, allDay, startDate, endDate, reminder });
+            alert('タスクが保存されました！'); // 実際にはカスタムモーダルを使用
+            showPage('calendar-page'); // 保存後カレンダーページに戻る
+        });
+
+        // 分析詳細ページを表示する関数
+        function showAnalyticsDetail(type) {
+            if (type === 'total-users') {
+                showPage('total-users-detail-page');
+            } else if (type === 'new-tasks') {
+                showPage('new-tasks-detail-page');
+            } else if (type === 'task-analysis') {
+                showPage('task-analysis-detail-page');
+            } else if (type === 'app-launch') {
+                showPage('app-launch-detail-page');
+            }
+        }
+
+        // カレンダーのロジック
+        let currentDate = new Date(); // 現在の月を保持
+
+        // 月の表示を更新する関数
+        function updateMonthYearDisplay() {
+            const options = { year: 'numeric', month: 'long' };
+            document.getElementById('current-month-year').textContent = currentDate.toLocaleDateString('ja-JP', options);
+        }
+
+        // カレンダーをレンダリングする関数
+        function renderCalendar() {
+            const calendarGrid = document.querySelector('.calendar-grid');
+            // 曜日表示の下の要素をクリア
+            while (calendarGrid.children.length > 7) {
+                calendarGrid.removeChild(calendarGrid.lastChild);
+            }
+
+            const year = currentDate.getFullYear();
+            const month = currentDate.getMonth(); // 0-indexed
+
+            // その月の最初の日
+            const firstDayOfMonth = new Date(year, month, 1);
+            // その月の最後の日
+            const lastDayOfMonth = new Date(year, month + 1, 0);
+            // 1日の曜日 (0=日, 1=月, ...)
+            const startDayOfWeek = firstDayOfMonth.getDay();
+            // その月の日数
+            const daysInMonth = lastDayOfMonth.getDate();
+
+            // 前月の最終日
+            const lastDayOfPrevMonth = new Date(year, month, 0).getDate();
+
+            // 仮のイベントデータ (実際はAPIから取得)
+            const events = [
+                { date: new Date(2023, 11, 8).toDateString(), type: 'part-time', label: 'バイト' },
+                { date: new Date(2023, 11, 14).toDateString(), type: 'part-time', label: 'バイト' },
+                { date: new Date(2023, 11, 16).toDateString(), type: 'part-time', label: 'バイト' },
+                { date: new Date(2023, 11, 19).toDateString(), type: 'part-time', label: 'バイト' },
+                { date: new Date(2023, 11, 24).toDateString(), type: 'part-time', label: 'バイト' },
+                { date: new Date(2023, 11, 25).toDateString(), type: 'assignment', label: '課題' },
+                { date: new Date(2023, 11, 26).toDateString(), type: 'assignment', label: '課題' },
+            ];
+
+            // 前月の日付を追加
+            for (let i = 0; i < startDayOfWeek; i++) {
+                const dayDiv = document.createElement('div');
+                dayDiv.classList.add('calendar-day', 'text-gray-400');
+                dayDiv.textContent = lastDayOfPrevMonth - startDayOfWeek + 1 + i;
+                calendarGrid.appendChild(dayDiv);
+            }
+
+            // 今月の日付を追加
+            for (let i = 1; i <= daysInMonth; i++) {
+                const dayDiv = document.createElement('div');
+                dayDiv.classList.add('calendar-day', 'current-month', 'relative');
+                dayDiv.textContent = i;
+
+                const currentDay = new Date(year, month, i);
+                const hasEvent = events.some(event => new Date(event.date).toDateString() === currentDay.toDateString());
+
+                if (hasEvent) {
+                    dayDiv.classList.add('has-event');
+                    // イベントバッジを追加
+                    events.filter(event => new Date(event.date).toDateString() === currentDay.toDateString())
+                          .forEach(event => {
+                              const badge = document.createElement('span');
+                              badge.classList.add('event-badge', `event-badge-${event.type}`);
+                              badge.textContent = event.label;
+                              dayDiv.appendChild(badge);
+                          });
+                }
+
+                // 今日の日付をハイライト
+                const today = new Date();
+                if (currentDay.getDate() === today.getDate() &&
+                    currentDay.getMonth() === today.getMonth() &&
+                    currentDay.getFullYear() === today.getFullYear()) {
+                    dayDiv.classList.add('border-2', 'border-red-500'); // 今日の日付のスタイル
+                }
+
+                dayDiv.addEventListener('click', () => {
+                    // 選択された日付のスタイルをリセット
+                    document.querySelectorAll('.calendar-day.selected').forEach(d => d.classList.remove('selected'));
+                    dayDiv.classList.add('selected');
+                    // ここで選択された日付のイベントを表示するなどの処理を追加
+                    console.log(`Selected date: ${year}/${month + 1}/${i}`);
+                });
+
+                calendarGrid.appendChild(dayDiv);
+            }
+
+            // 来月の日付を追加 (グリッドを埋めるため)
+            let nextMonthDay = 1;
+            const totalDaysDisplayed = startDayOfWeek + daysInMonth;
+            const remainingCells = 42 - totalDaysDisplayed; // 6行 * 7列 = 42セルを想定
+            for (let i = 0; i < remainingCells; i++) {
+                const dayDiv = document.createElement('div');
+                dayDiv.classList.add('calendar-day', 'text-gray-400');
+                dayDiv.textContent = nextMonthDay++;
+                calendarGrid.appendChild(dayDiv);
+            }
+
+            updateMonthYearDisplay();
+        }
+
+        // 前月ボタン
+        document.getElementById('prev-month').addEventListener('click', () => {
+            currentDate.setMonth(currentDate.getMonth() - 1);
+            renderCalendar();
+        });
+
+        // 次月ボタン
+        document.getElementById('next-month').addEventListener('click', () => {
+            currentDate.setMonth(currentDate.getMonth() + 1);
+            renderCalendar();
+        });
+
+        // Chart.js インスタンスを保持する変数
+        let taskAnalysisChartInstance = null;
+        let appLaunchChartInstance = null;
+
+        // タスク分析グラフをレンダリングする関数
+        function renderTaskAnalysisChart() {
+            const ctx = document.getElementById('taskAnalysisChart').getContext('2d');
+
+            // 既存のChartインスタンスがあれば破棄
+            if (taskAnalysisChartInstance) {
+                taskAnalysisChartInstance.destroy();
+            }
+
+            taskAnalysisChartInstance = new Chart(ctx, {
+                type: 'pie',
+                data: {
+                    labels: ['課題', 'バイト', 'サークル', '友人', '家族'],
+                    datasets: [{
+                        data: [26, 24, 19, 16, 15], // 仮のデータ
+                        backgroundColor: [
+                            '#4CAF50', // Green
+                            '#2196F3', // Blue
+                            '#E91E63', // Pink
+                            '#FFC107', // Amber
+                            '#F44336'  // Red
+                        ],
+                        hoverOffset: 4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'right',
+                        },
+                        title: {
+                            display: true,
+                            text: 'タスク分析',
+                            font: {
+                                size: 16
+                            }
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    let label = context.label || '';
+                                    if (label) {
+                                        label += ': ';
+                                    }
+                                    if (context.parsed !== null) {
+                                        label += context.parsed + '%';
+                                    }
+                                    return label;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        // アプリ起動回数グラフをレンダリングする関数
+        function renderAppLaunchChart() {
+            const ctx = document.getElementById('appLaunchChart').getContext('2d');
+
+            // 既存のChartインスタンスがあれば破棄
+            if (appLaunchChartInstance) {
+                appLaunchChartInstance.destroy();
+            }
+
+            appLaunchChartInstance = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['起動済み', '未起動'],
+                    datasets: [{
+                        data: [50, 50], // 仮のデータ
+                        backgroundColor: [
+                            '#673AB7', // Deep Purple
+                            '#E0E0E0'  // Light Gray
+                        ],
+                        hoverOffset: 4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    cutout: '70%', // ドーナツの中央の穴のサイズ
+                    plugins: {
+                        legend: {
+                            display: false // 凡例を非表示
+                        },
+                        title: {
+                            display: true,
+                            text: 'アプリ起動回数',
+                            font: {
+                                size: 16
+                            }
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    let label = context.label || '';
+                                    if (label) {
+                                        label += ': ';
+                                    }
+                                    if (context.parsed !== null) {
+                                        label += context.parsed + '%';
+                                    }
+                                    return label;
+                                }
+                            }
+                        }
+                    }
+                },
+                plugins: [{ // 中央にテキストを表示するプラグイン
+                    id: 'centerText',
+                    beforeDraw: function(chart) {
+                        const width = chart.width;
+                        const height = chart.height;
+                        const ctx = chart.ctx;
+                        ctx.restore();
+                        const fontSize = (height / 114).toFixed(2);
+                        ctx.font = fontSize + "em sans-serif";
+                        ctx.textBaseline = "middle";
+                        const text = "50%"; // 表示したいテキスト
+                        const textX = Math.round((width - ctx.measureText(text).width) / 2);
+                        const textY = height / 2;
+                        ctx.fillText(text, textX, textY);
+                        ctx.save();
+                    }
+                }]
+            });
+        }
+
+        // 初期表示
+        document.addEventListener('DOMContentLoaded', () => {
+            showPage('login-page');
+            // 日付入力フィールドのデフォルト値を今日に設定
+            const today = new Date().toISOString().split('T')[0];
+            document.getElementById('start-date').value = today;
+            document.getElementById('end-date').value = today;
+        });
+
+    </script>
+</body>
+</html>
