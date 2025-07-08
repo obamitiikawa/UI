@@ -1,0 +1,32 @@
+<div id="calendar-page" class="page flex-col">
+    <div class="header flex justify-between items-center p-4">
+        <button id="prev-month" class="text-gray-600"><i class="fas fa-chevron-left"></i></button>
+        <span id="current-month-year" class="text-lg font-semibold"></span>
+        <button id="next-month" class="text-gray-600"><i class="fas fa-chevron-right"></i></button>
+        </div>
+    <div class="p-4 flex-grow">
+        <div class="notification-banner bg-red-100 text-red-700 p-3 rounded-xl mb-4">
+            <p>締め切りの近い課題が二件あります</p>
+        </div>
+        <div class="calendar-grid grid grid-cols-7 gap-2 text-center">
+            <div class="font-semibold text-gray-500">SUN</div>
+            <div class="font-semibold text-gray-500">MON</div>
+            <div class="font-semibold text-gray-500">TUE</div>
+            <div class="font-semibold text-gray-500">WED</div>
+            <div class="font-semibold text-gray-500">THU</div>
+            <div class="font-semibold text-gray-500">FRI</div>
+            <div class="font-semibold text-gray-500">SAT</div>
+            </div>
+    </div>
+    <div class="bottom-nav flex justify-around p-3 border-t">
+        <div class="bottom-nav-item active" onclick="showPage('calendar-page')">
+            <i class="fas fa-calendar-alt"></i><span>イベント</span>
+        </div>
+        <div class="bottom-nav-item" onclick="showPage('new-task-page')">
+            <i class="fas fa-plus-circle text-2xl"></i><span>タスク追加</span>
+        </div>
+        <div class="bottom-nav-item" onclick="showPage('analytics-menu-page')">
+            <i class="fas fa-cog"></i><span>Setting</span>
+        </div>
+    </div>
+</div>
