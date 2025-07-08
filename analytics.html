@@ -1,0 +1,43 @@
+<div id="analytics-menu-page" class="page flex-col">
+    <div class="header p-4"><h2 class="text-lg font-semibold">分析</h2></div>
+    <div class="p-4 flex-grow">
+        <div class="mb-4 p-4 bg-gray-100 rounded-xl cursor-pointer" onclick="showAnalyticsDetail('total-users')">
+            <h3 class="font-semibold">総ユーザー数</h3>
+        </div>
+        <div class="mb-4 p-4 bg-gray-100 rounded-xl cursor-pointer" onclick="showAnalyticsDetail('task-analysis')">
+            <h3 class="font-semibold">タスク分析</h3>
+        </div>
+        </div>
+    <div class="bottom-nav flex justify-around p-3 border-t">
+        <div class="bottom-nav-item" onclick="showPage('calendar-page')">
+            <i class="fas fa-calendar-alt"></i><span>イベント</span>
+        </div>
+        <div class="bottom-nav-item" onclick="showPage('new-task-page')">
+            <i class="fas fa-plus-circle text-2xl"></i><span>タスク追加</span>
+        </div>
+        <div class="bottom-nav-item active" onclick="showPage('analytics-menu-page')">
+            <i class="fas fa-cog"></i><span>Setting</span>
+        </div>
+    </div>
+</div>
+
+<div id="total-users-detail-page" class="page flex-col">
+    <div class="header flex justify-between items-center p-4">
+        <button onclick="showPage('analytics-menu-page')" class="text-gray-600"><i class="fas fa-chevron-left"></i></button>
+        <h2 class="text-lg font-semibold">総ユーザー数</h2><div></div>
+    </div>
+    <div class="p-4 flex-grow text-center flex flex-col justify-center items-center">
+        <p class="text-5xl font-bold mb-2">10,000人</p>
+        <p class="text-lg">先週より <span class="text-red-600 font-bold">500人↑</span></p>
+    </div>
+</div>
+
+<div id="task-analysis-detail-page" class="page flex-col">
+    <div class="header flex justify-between items-center p-4">
+        <button onclick="showPage('analytics-menu-page')" class="text-gray-600"><i class="fas fa-chevron-left"></i></button>
+        <h2 class="text-lg font-semibold">タスク分析</h2><div></div>
+    </div>
+    <div class="p-4 flex-grow flex flex-col justify-center items-center">
+        <div class="chart-container w-full h-64"><canvas id="taskAnalysisChart"></canvas></div>
+    </div>
+</div>
